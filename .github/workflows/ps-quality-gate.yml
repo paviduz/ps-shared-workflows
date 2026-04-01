@@ -1,0 +1,216 @@
+name: PowerShell Quality Gate
+
+# ---------------------------------------------------------------------------
+# Reusable workflow — call this from any repository via:
+#
+#   jobs:
+#     ps-quality:
+#       uses: pavid/ps-shared-workflows/.github/workflows/ps-quality-gate.yml@main
+#       with:
+#         ps-path: './src'
+#         test-path: './tests'
+#
+# See README.md for the full input reference.
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_call:
+    inputs:
+      ps-path:
+        description: >
+          Path to PowerShell files or directory to analyse (relative to repo root).
+          Defaults to the repository root.
+        required: false
+        default: '.'
+        type: string
+
+      settings-path:
+        description: >
+          Relative path to PSScriptAnalyzerSettings.psd1 in the calling repository.
+          When the file is not found, the workflow falls back to the defaults
+          bundled with this shared workflow.
+        required: false
+        default: 'PSScriptAnalyzerSettings.psd1'
+        type: string
+
+      test-path:
+        description: >
+          Path to Pester .Tests.ps1 files or directory (relative to repo root).
+          Omit or leave empty to skip the Pester stage entirely.
+        required: false
+        default: ''
+        type: string
+
+      fail-on-warning:
+        description: >
+          When true, ScriptAnalyzer Warning findings also fail the workflow.
+          Default: false (only Error severity fails).
+        required: false
+        default: false
+        type: boolean
+
+      pester-verbosity:
+        description: 'Pester output verbosity: Minimal, Normal, Detailed, or Diagnostic.'
+        required: false
+        default: 'Normal'
+        type: string
+
+      runner:
+        description: 'GitHub-hosted runner image. Defaults to ubuntu-latest.'
+        required: false
+        default: 'ubuntu-latest'
+        type: string
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Stage 1 + 2a: Static analysis and security rule scan
+  # ---------------------------------------------------------------------------
+  static-analysis:
+    name: Static Analysis
+    runs-on: ${{ inputs.runner }}
+
+    steps:
+      - name: Checkout calling repository
+        uses: actions/checkout@v4
+
+      - name: Checkout shared-workflows defaults
+        uses: actions/checkout@v4
+        with:
+          repository: pavid/ps-shared-workflows
+          ref: main
+          path: .ps-shared-workflows
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+              Install-Module PSScriptAnalyzer -Force -Scope CurrentUser -AllowClobber
+          }
+          Import-Module PSScriptAnalyzer
+
+      - name: Run ScriptAnalyzer
+        shell: pwsh
+        run: |
+          $psPath       = '${{ inputs.ps-path }}'
+          $settingsPath = '${{ inputs.settings-path }}'
+          $failOnWarn   = [bool]::Parse('${{ inputs.fail-on-warning }}')
+
+          $analyzerParams = @{
+              Path    = $psPath
+              Recurse = $true
+          }
+
+          if (Test-Path $settingsPath) {
+              Write-Host "Active settings: $settingsPath"
+              $analyzerParams['Settings'] = $settingsPath
+          }
+          elseif (Test-Path '.ps-shared-workflows/defaults/PSScriptAnalyzerSettings.psd1') {
+              Write-Host "Active settings: shared-workflows defaults (no repo-level settings file found at '$settingsPath')"
+              $analyzerParams['Settings'] = '.ps-shared-workflows/defaults/PSScriptAnalyzerSettings.psd1'
+          }
+          else {
+              Write-Host "Active settings: built-in PSScriptAnalyzer defaults (Error + Warning severity)"
+              $analyzerParams['Severity'] = @('Error', 'Warning')
+          }
+
+          $results = Invoke-ScriptAnalyzer @analyzerParams
+
+          # Emit GitHub Actions annotations for inline PR review comments.
+          $repoRoot = (Get-Location).Path + [IO.Path]::DirectorySeparatorChar
+          foreach ($r in $results) {
+              $relPath = $r.ScriptPath -replace [regex]::Escape($repoRoot), ''
+              $level   = if ($r.Severity -eq 'Error') { 'error' } else { 'warning' }
+              Write-Host "::${level} file=${relPath},line=$($r.Line),col=$($r.Column)::[$($r.RuleName)] $($r.Message)"
+          }
+
+          $errorCount   = ($results | Where-Object Severity -eq 'Error').Count
+          $warningCount = ($results | Where-Object Severity -eq 'Warning').Count
+
+          Write-Host ""
+          Write-Host "ScriptAnalyzer summary: $errorCount error(s), $warningCount warning(s)"
+
+          if ($errorCount -gt 0) {
+              Write-Error "FAIL: $errorCount ScriptAnalyzer Error(s) found."
+              exit 1
+          }
+          if ($failOnWarn -and $warningCount -gt 0) {
+              Write-Error "FAIL: $warningCount ScriptAnalyzer Warning(s) found (fail-on-warning is enabled)."
+              exit 1
+          }
+
+          Write-Host "PASS: ScriptAnalyzer clean."
+
+      - name: Run security rule scan
+        shell: pwsh
+        run: |
+          $psPath = '${{ inputs.ps-path }}'
+
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+              Import-Module PSScriptAnalyzer
+          }
+
+          $securityResults = Invoke-ScriptAnalyzer -Path $psPath -Recurse -Severity Error, Warning |
+              Where-Object { $_.RuleName -match 'Password|Credential|Secret|Injection|Invoke-Expression' }
+
+          if ($securityResults.Count -gt 0) {
+              $repoRoot = (Get-Location).Path + [IO.Path]::DirectorySeparatorChar
+              foreach ($r in $securityResults) {
+                  $relPath = $r.ScriptPath -replace [regex]::Escape($repoRoot), ''
+                  Write-Host "::error file=${relPath},line=$($r.Line),col=$($r.Column)::[SECURITY][$($r.RuleName)] $($r.Message)"
+              }
+              Write-Error "FAIL: $($securityResults.Count) security-relevant finding(s) found."
+              exit 1
+          }
+
+          Write-Host "PASS: No security-relevant ScriptAnalyzer findings."
+
+  # ---------------------------------------------------------------------------
+  # Stage 4: Pester tests (skipped when test-path is empty)
+  # ---------------------------------------------------------------------------
+  pester-tests:
+    name: Pester Tests
+    runs-on: ${{ inputs.runner }}
+    if: ${{ inputs.test-path != '' }}
+
+    steps:
+      - name: Checkout calling repository
+        uses: actions/checkout@v4
+
+      - name: Install Pester v5
+        shell: pwsh
+        run: |
+          $installed = Get-Module -ListAvailable -Name Pester |
+              Sort-Object Version -Descending | Select-Object -First 1
+          if (-not $installed -or $installed.Version -lt [version]'5.0') {
+              Install-Module Pester -Force -Scope CurrentUser -AllowClobber -MinimumVersion 5.0
+          }
+          Import-Module Pester
+
+      - name: Run Pester
+        shell: pwsh
+        run: |
+          $testPath  = '${{ inputs.test-path }}'
+          $verbosity = '${{ inputs.pester-verbosity }}'
+
+          if (-not (Test-Path $testPath)) {
+              Write-Warning "Test path '$testPath' not found. Skipping Pester."
+              exit 0
+          }
+
+          $config                          = New-PesterConfiguration
+          $config.Run.Path                 = $testPath
+          $config.Run.Exit                 = $true
+          $config.Output.Verbosity         = $verbosity
+          $config.TestResult.Enabled       = $true
+          $config.TestResult.OutputPath    = 'pester-results.xml'
+          $config.TestResult.OutputFormat  = 'NUnitXml'
+
+          Invoke-Pester -Configuration $config
+
+      - name: Upload Pester results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pester-results
+          path: pester-results.xml
+          if-no-files-found: ignore
