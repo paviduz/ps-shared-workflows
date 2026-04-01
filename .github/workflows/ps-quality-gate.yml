@@ -5,7 +5,7 @@ name: PowerShell Quality Gate
 #
 #   jobs:
 #     ps-quality:
-#       uses: pavid/ps-shared-workflows/.github/workflows/ps-quality-gate.yml@main
+#       uses: paviduz/ps-shared-workflows/.github/workflows/ps-quality-gate.yml@main
 #       with:
 #         ps-path: './src'
 #         test-path: './tests'
@@ -76,7 +76,7 @@ jobs:
       - name: Checkout shared-workflows defaults
         uses: actions/checkout@v4
         with:
-          repository: pavid/ps-shared-workflows
+          repository: paviduz/ps-shared-workflows
           ref: main
           path: .ps-shared-workflows
 

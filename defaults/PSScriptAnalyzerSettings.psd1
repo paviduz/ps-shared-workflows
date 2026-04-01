@@ -5,7 +5,7 @@
 #
 # Calling repositories should copy
 # .github/skills/ps-quality-pipeline/templates/PSScriptAnalyzerSettings.psd1
-# from pavid/Homelab-Agent-Platform-Plan to their repo root and customise it.
+# from paviduz/Homelab-Agent-Platform-Plan to their repo root and customise it.
 # ---------------------------------------------------------------------------
 @{
     Severity = @('Error', 'Warning')

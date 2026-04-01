@@ -30,7 +30,7 @@ on:
 
 jobs:
   ps-quality:
-    uses: pavid/ps-shared-workflows/.github/workflows/ps-quality-gate.yml@main
+    uses: paviduz/ps-shared-workflows/.github/workflows/ps-quality-gate.yml@main
     with:
       ps-path: './src'
       test-path: './tests'
@@ -58,13 +58,13 @@ The workflow resolves settings in this priority order:
 To configure your own rules, copy
 `defaults/PSScriptAnalyzerSettings.psd1` to your repository root and edit it.
 A full annotated template is also available in
-[`pavid/Homelab-Agent-Platform-Plan`](https://github.com/pavid/Homelab-Agent-Platform-Plan)
+[`paviduz/Homelab-Agent-Platform-Plan`](https://github.com/paviduz/Homelab-Agent-Platform-Plan)
 at `.github/skills/ps-quality-pipeline/templates/PSScriptAnalyzerSettings.psd1`.
 
 ## Relationship to the PS agent team
 
 This workflow automates the deterministic stages of the five-stage quality pipeline
-defined in `pavid/Homelab-Agent-Platform-Plan`:
+defined in `paviduz/Homelab-Agent-Platform-Plan`:
 
 | Pipeline stage | Automated here | Agent (interactive) |
 | --- | --- | --- |
