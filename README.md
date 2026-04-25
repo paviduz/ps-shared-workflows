@@ -4,6 +4,29 @@ Reusable GitHub Actions workflows for PowerShell code quality enforcement.
 
 ## Workflows
 
+### `dispatch-downstream.yml`
+
+Sends a `repository_dispatch` event to another repo. Use this to chain
+cross-repo CI workflows without polling or scheduled runs.
+
+```yaml
+jobs:
+  notify:
+    uses: paviduz/ps-shared-workflows/.github/workflows/dispatch-downstream.yml@main
+    with:
+      target_repo: homelab-context
+      event_type: infra-changed
+    secrets:
+      HOMELAB_PAT: ${{ secrets.HOMELAB_PAT }}
+```
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| `target_repo` | yes | Repository name without owner |
+| `event_type` | yes | String the target listens for in `repository_dispatch.types` |
+
+The `HOMELAB_PAT` secret must have `Actions: write` permission on the target repo.
+
 ### `ps-quality-gate.yml`
 
 Runs two parallel jobs against any PowerShell repository:

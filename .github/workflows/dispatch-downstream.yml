@@ -1,0 +1,46 @@
+name: Dispatch downstream event
+
+# Reusable workflow — sends a repository_dispatch event to another repo.
+# Use this to chain cross-repo CI without polling or scheduled runs.
+#
+# Usage:
+#   jobs:
+#     notify:
+#       uses: paviduz/ps-shared-workflows/.github/workflows/dispatch-downstream.yml@main
+#       with:
+#         target_repo: homelab-context
+#         event_type: infra-changed
+#       secrets:
+#         HOMELAB_PAT: ${{ secrets.HOMELAB_PAT }}
+
+on:
+  workflow_call:
+    inputs:
+      target_repo:
+        description: Repository name (without owner) to dispatch to.
+        required: true
+        type: string
+      event_type:
+        description: Event type string the target listens for in repository_dispatch.types.
+        required: true
+        type: string
+    secrets:
+      HOMELAB_PAT:
+        description: PAT with Actions:write on the target repository.
+        required: true
+
+jobs:
+  dispatch:
+    name: "${{ inputs.event_type }} → ${{ inputs.target_repo }}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send repository_dispatch
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.HOMELAB_PAT }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = '${{ inputs.target_repo }}';
+            const event = '${{ inputs.event_type }}';
+            await github.rest.repos.createDispatchEvent({ owner, repo, event_type: event });
+            core.info(`Dispatched '${event}' to ${owner}/${repo}`);
