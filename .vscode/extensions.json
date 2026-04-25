@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "GitHub.vscode-github-actions",
+    "GitHub.copilot-chat",
+    "ms-vscode.powershell",
+    "eamodio.gitlens",
+    "davidanson.vscode-markdownlint"
+  ]
+}
