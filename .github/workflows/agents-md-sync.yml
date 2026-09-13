@@ -65,6 +65,15 @@ jobs:
             git push
           fi
 
+      # CLAUDE.md's @../ps-shared-workflows/... import assumes the local
+      # sibling-repo convention, which this checkout doesn't otherwise
+      # replicate (ps-shared-workflows lands in .ps-shared-workflows, a
+      # subfolder, not a true sibling). Symlink it into the sibling position
+      # so the lint step below checks the same layout Claude Code actually
+      # sees on a real machine.
+      - name: Link ps-shared-workflows into sibling position for linting
+        run: ln -sfn "$PWD/.ps-shared-workflows" "$PWD/../ps-shared-workflows"
+
       - name: Lint CLAUDE.md imports
         shell: pwsh
         run: ./.ps-shared-workflows/scripts/Test-ClaudeImports.ps1 -RepoRoot .
