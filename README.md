@@ -33,7 +33,7 @@ The `HOMELAB_PAT` secret must have `Actions: write` permission on the target rep
 
 Regenerates a calling repo's `AGENTS.md` from `defaults/AGENTS.shared.md`
 (this repo, the single source of shared conventions) plus the calling repo's
-own `AGENTS.local.md`, and commits it if it changed. Add to a repo:
+own `AGENTS.repo.md`, and commits it if it changed. Add to a repo:
 
 ```yaml
 # .github/workflows/agents-md-sync.yml
@@ -42,7 +42,7 @@ name: Sync AGENTS.md
 on:
   push:
     branches: [main]
-    paths: ['AGENTS.local.md']
+    paths: ['AGENTS.repo.md']
   repository_dispatch:
     types: [shared-conventions-changed]
   workflow_dispatch:
@@ -63,7 +63,7 @@ on the automatic fan-out; until then, trigger `agents-md-sync.yml` manually
 
 AGENTS.md is the reliable, cross-tool snapshot (Cursor, Copilot, Codex,
 Gemini CLI read it natively). Claude Code instead imports
-`AGENTS.local.md` and `defaults/AGENTS.shared.md` directly, live, via
+`AGENTS.repo.md` and `defaults/AGENTS.shared.md` directly, live, via
 `CLAUDE.md`'s `@path` syntax — see homelab-infra/decisions/ for why both
 exist side by side.
 

@@ -5,7 +5,7 @@ personal-brain project cluster: homelab-infra, homelab-context,
 personal-brain, homelab-tools, context-engine, knowledge-server. It's
 generated from `ps-shared-workflows/defaults/AGENTS.shared.md` — edit it
 there, not in a copy. Changes propagate to every repo automatically via
-`agents-md-sync.yml`. See `AGENTS.local.md` in this repo for conventions
+`agents-md-sync.yml`. See `AGENTS.repo.md` in this repo for conventions
 specific to it.
 
 ### Decisions

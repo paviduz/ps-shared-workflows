@@ -2,13 +2,13 @@ name: Sync AGENTS.md
 
 # Reusable workflow — regenerates a calling repo's AGENTS.md from the shared
 # conventions block in this repo (defaults/AGENTS.shared.md) plus the calling
-# repo's own AGENTS.local.md, and commits it if it changed.
+# repo's own AGENTS.repo.md, and commits it if it changed.
 #
 # Usage (in the calling repo):
 #   on:
 #     push:
 #       branches: [main]
-#       paths: ['AGENTS.local.md']
+#       paths: ['AGENTS.repo.md']
 #     repository_dispatch:
 #       types: [shared-conventions-changed]
 #     workflow_dispatch:
@@ -47,7 +47,7 @@ jobs:
         run: |
           ./.ps-shared-workflows/scripts/Sync-AgentsMd.ps1 `
             -SharedPath .ps-shared-workflows/defaults/AGENTS.shared.md `
-            -LocalPath AGENTS.local.md `
+            -LocalPath AGENTS.repo.md `
             -OutputPath AGENTS.md
 
       - name: Commit if changed
