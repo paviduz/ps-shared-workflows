@@ -2,7 +2,10 @@ name: Sync AGENTS.md
 
 # Reusable workflow — regenerates a calling repo's AGENTS.md from the shared
 # conventions block in this repo (defaults/AGENTS.shared.md) plus the calling
-# repo's own AGENTS.repo.md, and commits it if it changed.
+# repo's own AGENTS.repo.md, and commits it if it changed. Also lints the
+# calling repo's CLAUDE.md (or .claude/CLAUDE.md) for @imports that don't
+# resolve — Claude Code silently skips those instead of erroring, so this is
+# the only thing that would ever catch one.
 #
 # Usage (in the calling repo):
 #   on:
@@ -61,3 +64,7 @@ jobs:
             git commit -m "chore(agents): regenerate AGENTS.md [skip ci]"
             git push
           fi
+
+      - name: Lint CLAUDE.md imports
+        shell: pwsh
+        run: ./.ps-shared-workflows/scripts/Test-ClaudeImports.ps1 -RepoRoot .

@@ -53,11 +53,18 @@ on:
 
 jobs:
   agents-md:
+    permissions:
+      contents: write
     uses: paviduz/ps-shared-workflows/.github/workflows/agents-md-sync.yml@main
 ```
 
-No secrets required — this repo is public. `notify-agents-md-change.yml` (in
-this repo) dispatches `shared-conventions-changed` to every repo in the
+The caller must grant `contents: write` itself — a reusable workflow's
+requested job permissions can't exceed what the calling job grants, and
+without it this fails as an instant `startup_failure` with no jobs run
+(nothing in the logs points at the real cause; found the hard way).
+
+No secrets required beyond that — this repo is public. `notify-agents-md-change.yml`
+(in this repo) dispatches `shared-conventions-changed` to every repo in the
 cluster whenever `defaults/AGENTS.shared.md` changes, so each one
 regenerates automatically. That dispatch needs a `HOMELAB_PAT` secret set on
 *this* repo (`Contents: read and write`, with every target repo in the
@@ -71,6 +78,14 @@ Gemini CLI read it natively). Claude Code instead imports
 `AGENTS.repo.md` and `defaults/AGENTS.shared.md` directly, live, via
 `CLAUDE.md`'s `@path` syntax — see homelab-infra/decisions/ for why both
 exist side by side.
+
+The same job also runs `scripts/Test-ClaudeImports.ps1` against the calling
+repo's `CLAUDE.md` (or `.claude/CLAUDE.md`), failing the run if any `@import`
+resolves to a path that doesn't exist. Claude Code itself silently skips a
+missing import rather than erroring, so this is the only thing that would
+ever catch one — worth having given how easy it is to miscount `../` depth
+for a `CLAUDE.md` living in a subdirectory (`.claude/CLAUDE.md`'s imports
+resolve one level deeper than a root `CLAUDE.md`'s).
 
 ### `ps-quality-gate.yml`
 
