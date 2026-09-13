@@ -27,7 +27,11 @@ jobs:
 | `target_repo` | yes | Repository name without owner |
 | `event_type` | yes | String the target listens for in `repository_dispatch.types` |
 
-The `HOMELAB_PAT` secret must have `Actions: write` permission on the target repo.
+The `HOMELAB_PAT` secret must have `Contents: read and write` permission on
+the target repo (fine-grained PAT) — that's what the `repository_dispatch`
+endpoint actually requires, confirmed via the `x-accepted-github-permissions`
+response header. If it's a fine-grained token, the target repo also needs to
+be in the token's repository allowlist, or the API returns 404, not 403.
 
 ### `agents-md-sync.yml`
 
@@ -56,7 +60,8 @@ No secrets required — this repo is public. `notify-agents-md-change.yml` (in
 this repo) dispatches `shared-conventions-changed` to every repo in the
 cluster whenever `defaults/AGENTS.shared.md` changes, so each one
 regenerates automatically. That dispatch needs a `HOMELAB_PAT` secret set on
-*this* repo (`Actions: write` on every target repo) — add it via
+*this* repo (`Contents: read and write`, with every target repo in the
+token's allowlist if it's fine-grained) — add it via
 `gh secret set HOMELAB_PAT --repo paviduz/ps-shared-workflows` before relying
 on the automatic fan-out; until then, trigger `agents-md-sync.yml` manually
 (`workflow_dispatch`) in each repo after editing the shared file.
