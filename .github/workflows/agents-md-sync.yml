@@ -1,0 +1,63 @@
+name: Sync AGENTS.md
+
+# Reusable workflow — regenerates a calling repo's AGENTS.md from the shared
+# conventions block in this repo (defaults/AGENTS.shared.md) plus the calling
+# repo's own AGENTS.local.md, and commits it if it changed.
+#
+# Usage (in the calling repo):
+#   on:
+#     push:
+#       branches: [main]
+#       paths: ['AGENTS.local.md']
+#     repository_dispatch:
+#       types: [shared-conventions-changed]
+#     workflow_dispatch:
+#   jobs:
+#     agents-md:
+#       uses: paviduz/ps-shared-workflows/.github/workflows/agents-md-sync.yml@main
+#
+# No secrets required — this repo is public, checked out with the default
+# GITHUB_TOKEN.
+
+on:
+  workflow_call:
+
+jobs:
+  sync:
+    name: Regenerate AGENTS.md
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout calling repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout ps-shared-workflows
+        uses: actions/checkout@v4
+        with:
+          repository: paviduz/ps-shared-workflows
+          ref: main
+          path: .ps-shared-workflows
+
+      - name: Regenerate AGENTS.md
+        shell: pwsh
+        run: |
+          ./.ps-shared-workflows/scripts/Sync-AgentsMd.ps1 `
+            -SharedPath .ps-shared-workflows/defaults/AGENTS.shared.md `
+            -LocalPath AGENTS.local.md `
+            -OutputPath AGENTS.md
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add AGENTS.md
+          if git diff --cached --quiet; then
+            echo "AGENTS.md unchanged — skipping commit."
+          else
+            git commit -m "chore(agents): regenerate AGENTS.md [skip ci]"
+            git push
+          fi

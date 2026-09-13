@@ -1,6 +1,8 @@
 # ps-shared-workflows
 
-Reusable GitHub Actions workflows for PowerShell code quality enforcement.
+Reusable GitHub Actions workflows for PowerShell code quality enforcement,
+plus the canonical source for project-wide AGENTS.md conventions shared
+across the homelab-infra / context-engine / personal-brain repo cluster.
 
 ## Workflows
 
@@ -26,6 +28,44 @@ jobs:
 | `event_type` | yes | String the target listens for in `repository_dispatch.types` |
 
 The `HOMELAB_PAT` secret must have `Actions: write` permission on the target repo.
+
+### `agents-md-sync.yml`
+
+Regenerates a calling repo's `AGENTS.md` from `defaults/AGENTS.shared.md`
+(this repo, the single source of shared conventions) plus the calling repo's
+own `AGENTS.local.md`, and commits it if it changed. Add to a repo:
+
+```yaml
+# .github/workflows/agents-md-sync.yml
+name: Sync AGENTS.md
+
+on:
+  push:
+    branches: [main]
+    paths: ['AGENTS.local.md']
+  repository_dispatch:
+    types: [shared-conventions-changed]
+  workflow_dispatch:
+
+jobs:
+  agents-md:
+    uses: paviduz/ps-shared-workflows/.github/workflows/agents-md-sync.yml@main
+```
+
+No secrets required — this repo is public. `notify-agents-md-change.yml` (in
+this repo) dispatches `shared-conventions-changed` to every repo in the
+cluster whenever `defaults/AGENTS.shared.md` changes, so each one
+regenerates automatically. That dispatch needs a `HOMELAB_PAT` secret set on
+*this* repo (`Actions: write` on every target repo) — add it via
+`gh secret set HOMELAB_PAT --repo paviduz/ps-shared-workflows` before relying
+on the automatic fan-out; until then, trigger `agents-md-sync.yml` manually
+(`workflow_dispatch`) in each repo after editing the shared file.
+
+AGENTS.md is the reliable, cross-tool snapshot (Cursor, Copilot, Codex,
+Gemini CLI read it natively). Claude Code instead imports
+`AGENTS.local.md` and `defaults/AGENTS.shared.md` directly, live, via
+`CLAUDE.md`'s `@path` syntax — see homelab-infra/decisions/ for why both
+exist side by side.
 
 ### `ps-quality-gate.yml`
 

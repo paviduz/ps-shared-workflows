@@ -1,0 +1,65 @@
+name: Notify downstream repos of shared conventions change
+
+# Fires when defaults/AGENTS.shared.md changes and dispatches
+# shared-conventions-changed to every repo in the project cluster, so each
+# regenerates its own AGENTS.md via agents-md-sync.yml.
+#
+# Requires a HOMELAB_PAT secret in THIS repo (Actions:write on every target
+# below) — ps-shared-workflows doesn't hold one today; add it before this
+# workflow can dispatch anything.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'defaults/AGENTS.shared.md'
+  workflow_dispatch:
+
+jobs:
+  notify-homelab-infra:
+    uses: ./.github/workflows/dispatch-downstream.yml
+    with:
+      target_repo: homelab-infra
+      event_type: shared-conventions-changed
+    secrets:
+      HOMELAB_PAT: ${{ secrets.HOMELAB_PAT }}
+
+  notify-homelab-context:
+    uses: ./.github/workflows/dispatch-downstream.yml
+    with:
+      target_repo: homelab-context
+      event_type: shared-conventions-changed
+    secrets:
+      HOMELAB_PAT: ${{ secrets.HOMELAB_PAT }}
+
+  notify-personal-brain:
+    uses: ./.github/workflows/dispatch-downstream.yml
+    with:
+      target_repo: personal-brain
+      event_type: shared-conventions-changed
+    secrets:
+      HOMELAB_PAT: ${{ secrets.HOMELAB_PAT }}
+
+  notify-homelab-tools:
+    uses: ./.github/workflows/dispatch-downstream.yml
+    with:
+      target_repo: homelab-tools
+      event_type: shared-conventions-changed
+    secrets:
+      HOMELAB_PAT: ${{ secrets.HOMELAB_PAT }}
+
+  notify-context-engine:
+    uses: ./.github/workflows/dispatch-downstream.yml
+    with:
+      target_repo: context-engine
+      event_type: shared-conventions-changed
+    secrets:
+      HOMELAB_PAT: ${{ secrets.HOMELAB_PAT }}
+
+  notify-knowledge-server:
+    uses: ./.github/workflows/dispatch-downstream.yml
+    with:
+      target_repo: knowledge-server
+      event_type: shared-conventions-changed
+    secrets:
+      HOMELAB_PAT: ${{ secrets.HOMELAB_PAT }}
